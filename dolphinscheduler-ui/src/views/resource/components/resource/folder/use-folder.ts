@@ -16,34 +16,45 @@
  */
 
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { IEmit } from '../types'
 import type { Router } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useFileStore } from '@/store/file/file'
-import { onlineCreateResource } from '@/service/modules/resources'
+import { createDirectory } from '@/service/modules/resources'
 
-export function useCreate(state: any) {
+export function useFolder(state: any) {
   const { t } = useI18n()
   const router: Router = useRouter()
   const fileStore = useFileStore()
 
-  const handleCreateFile = () => {
-    const pid = router.currentRoute.value.params.id || -1
-    const currentDir = fileStore.getCurrentDir || '/'
-    state.fileFormRef.validate(async (valid: any) => {
-      if (!valid) {
-        await onlineCreateResource({
-          ...state.fileForm,
-          ...{ pid, currentDir }
-        })
+  const handleCreateFolder = async (
+    emit: IEmit,
+    hideModal: () => void,
+    resetForm: () => void
+  ) => {
+    await state.folderFormRef.validate()
 
-        window.$message.success(t('resource.file.success'))
-        const name = pid ? 'resource-file-subdirectory' : 'file'
-        router.push({ name, params: { id: pid } })
-      }
-    })
+    if (state.saving) return
+    state.saving = true
+
+    try {
+      const pid = router.currentRoute.value.params.id || -1
+      const currentDir = fileStore.getCurrentDir || '/'
+      await createDirectory({
+        ...state.folderForm,
+        ...{ pid, currentDir }
+      })
+      window.$message.success(t('resource.file.success'))
+      state.saving = false
+      emit('updateList')
+      hideModal()
+      resetForm()
+    } catch (err) {
+      state.saving = false
+    }
   }
 
   return {
-    handleCreateFile
+    handleCreateFolder
   }
 }

@@ -14,18 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {
-  defineComponent,
-  toRefs,
-  PropType,
-  watch,
-  getCurrentInstance
-} from 'vue'
-import { NForm, NFormItem, NInput } from 'naive-ui'
+import { defineComponent, getCurrentInstance, PropType, toRefs, watch } from 'vue'
+import { NButton, NForm, NFormItem, NInput, NUpload } from 'naive-ui'
+
 import { useI18n } from 'vue-i18n'
 import Modal from '@/components/modal'
 import { useForm } from './use-form'
-import { useRename } from './use-rename'
+import { useUpload } from './use-upload'
+import { ResourceType } from "@/views/resource/components/resource/types";
 
 const props = {
   show: {
@@ -43,67 +39,114 @@ const props = {
   description: {
     type: String as PropType<string>,
     default: ''
+  },
+  resourceType: {
+    type: String as PropType<ResourceType>,
+    default: undefined
+  },
+  isReupload: {
+    type: Boolean as PropType<boolean>,
+    default: false
   }
 }
 
 export default defineComponent({
-  name: 'ResourceFileRename',
+  name: 'ResourceFileUpload',
   props,
   emits: ['updateList', 'update:show'],
   setup(props, ctx) {
-    const { state, resetForm } = useForm(props.name, props.description)
-    const { handleRenameFile } = useRename(state)
+    const { state, resetForm } = useForm()
+    const { handleUploadFile } = useUpload(state)
 
     const hideModal = () => {
-      ctx.emit('update:show', false)
+      resetForm()
+      ctx.emit('update:show')
+    }
+
+    const customRequest = ({ file }: any) => {
+      state.uploadForm.name = file.name
+      state.uploadForm.file = file.file
+      state.uploadFormRef.validate()
     }
 
     const handleFile = () => {
-      handleRenameFile(ctx.emit, hideModal, resetForm)
+      handleUploadFile(ctx.emit, hideModal, resetForm)
+    }
+
+    const removeFile = () => {
+      state.uploadForm.name = ''
+      state.uploadForm.file = ''
     }
 
     const trim = getCurrentInstance()?.appContext.config.globalProperties.trim
 
+
     watch(
       () => props.show,
       () => {
-        state.renameForm.id = props.id
-        state.renameForm.name = props.name
-        state.renameForm.description = props.description
+        state.uploadForm.type = props.resourceType!
+        state.uploadForm.isReupload = props.isReupload
+        if (props.isReupload && props.show) {
+          state.uploadForm.id = props.id
+          state.uploadForm.name = props.name
+          state.uploadForm.description = props.description
+        }
       }
     )
 
-    return { hideModal, handleFile, ...toRefs(state), trim }
+    return {
+      hideModal,
+      customRequest,
+      handleFile,
+      removeFile,
+      ...toRefs(state),
+      trim
+    }
   },
   render() {
     const { t } = useI18n()
     return (
       <Modal
         show={this.$props.show}
-        title={t('resource.file.rename')}
+        title={t('resource.file.upload_files')}
         onCancel={this.hideModal}
         onConfirm={this.handleFile}
         confirmClassName='btn-submit'
         cancelClassName='btn-cancel'
         confirmLoading={this.saving}
       >
-        <NForm rules={this.rules} ref='renameFormRef'>
-          <NFormItem label={t('resource.file.name')} path='name'>
+        <NForm rules={this.rules} ref='uploadFormRef'>
+          <NFormItem
+            label={t('resource.file.file_name')}
+            path='name'
+            ref='uploadFormNameRef'
+          >
             <NInput
               allowInput={this.trim}
-              v-model={[this.renameForm.name, 'value']}
+              v-model={[this.uploadForm.name, 'value']}
               placeholder={t('resource.file.enter_name_tips')}
-              class='input-name'
+              class='input-file-name'
             />
           </NFormItem>
           <NFormItem label={t('resource.file.description')} path='description'>
             <NInput
               allowInput={this.trim}
               type='textarea'
-              v-model={[this.renameForm.description, 'value']}
+              v-model={[this.uploadForm.description, 'value']}
               placeholder={t('resource.file.enter_description_tips')}
               class='input-description'
             />
+          </NFormItem>
+          <NFormItem label={t('resource.file.upload_files')} path='file'>
+            <NUpload
+              v-model={[this.uploadForm.file, 'value']}
+              customRequest={this.customRequest}
+              class='btn-upload'
+              max={1}
+              onRemove={this.removeFile}
+            >
+              <NButton>{t('resource.file.upload_files')}</NButton>
+            </NUpload>
           </NFormItem>
         </NForm>
       </Modal>

@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+export type ResourceType = 'FILE' | 'UDF'
+
 export interface ResourceFileTableData {
   id: number
   name: string
@@ -23,6 +25,7 @@ export interface ResourceFileTableData {
   file_name: string
   description: string
   size: number
+  type: ResourceType
   update_time: string
 }
 
@@ -30,15 +33,20 @@ export interface IEmit {
   (event: any, ...args: any[]): void
 }
 
-export interface IRenameFile {
+export interface IReuploadResource {
   (id: number, name: string, description: string): void
 }
+
+export interface IRenameResource {
+  (id: number, name: string, description: string): void
+}
+
 export interface IRtDisb {
   (name: string, size: number): boolean
 }
 
 export interface IResourceListState {
-  (id?: number, searchVal?: string, pageNo?: number, pageSize?: number): any
+  (type: ResourceType, id?: number, searchVal?: string, pageNo?: number, pageSize?: number): any
 }
 
 export interface BasicTableProps {
@@ -65,7 +73,47 @@ export interface ISetPagination {
   (itemCount: number): void
 }
 
-export interface BreadcrumbItem {
-  id: number
-  fullName: string
+export interface ICreateFileDefaultValue {
+  (): {
+    pid: number,
+    type: ResourceType,
+    suffix: string,
+    fileName: string,
+    description: string,
+    content: string,
+    currentDir: string
+  }
+}
+
+export interface IFolderDefaultValue {
+  ():
+    {
+      pid: number,
+      type: ResourceType,
+      name: string,
+      description: string,
+      currentDir: string
+    }
+}
+
+export interface IRenameDefaultValue {
+  (
+    name?: string,
+    description?: string,
+    type?: ResourceType
+  ): {id: number, name: string, type: ResourceType, description: string}
+}
+
+export interface IUploadDefaultValue {
+  ():
+    {
+      id: number,
+      name: string,
+      file: string,
+      description: string,
+      type: ResourceType,
+      pid: number,
+      currentDir: string,
+      isReupload: boolean
+    }
 }

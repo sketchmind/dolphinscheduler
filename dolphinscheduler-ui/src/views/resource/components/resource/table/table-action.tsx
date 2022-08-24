@@ -15,23 +15,23 @@
  * limitations under the License.
  */
 
+import type { Router } from 'vue-router'
 import { useRouter } from 'vue-router'
 import { defineComponent, PropType } from 'vue'
-import { NSpace, NTooltip, NButton, NIcon, NPopconfirm } from 'naive-ui'
+import { NButton, NIcon, NPopconfirm, NSpace, NTooltip } from 'naive-ui'
 import {
   DeleteOutlined,
   DownloadOutlined,
-  FormOutlined,
   EditOutlined,
-  InfoCircleFilled
+  FormOutlined,
+  InfoCircleFilled,
+  UploadOutlined
 } from '@vicons/antd'
 import _ from 'lodash'
 import { useI18n } from 'vue-i18n'
-import { ResourceFileTableData } from '../types'
+import { IRtDisb, IRenameResource, ResourceFileTableData, IReuploadResource } from '../types'
 import { fileTypeArr } from '@/common/common'
-import { downloadResource, deleteResource } from '@/service/modules/resources'
-import { IRenameFile, IRtDisb } from '../types'
-import type { Router } from 'vue-router'
+import { deleteResource, downloadResource } from '@/service/modules/resources'
 
 const props = {
   show: {
@@ -51,11 +51,10 @@ const props = {
 export default defineComponent({
   name: 'TableAction',
   props,
-  emits: ['updateList', 'renameResource'],
+  emits: ['updateList', 'reuploadResource', 'renameResource'],
   setup(props, { emit }) {
     const { t } = useI18n()
     const router: Router = useRouter()
-
     const rtDisb: IRtDisb = (name, size) => {
       const i = name.lastIndexOf('.')
       const a = name.substring(i, name.length)
@@ -63,7 +62,7 @@ export default defineComponent({
       return !(flag && size < 1000000)
     }
 
-    const handleEditFile = (item: { id: number }) => {
+    const handleEditFile = (item: {id: number}) => {
       router.push({ name: 'resource-file-edit', params: { id: item.id } })
     }
 
@@ -71,7 +70,11 @@ export default defineComponent({
       deleteResource(id).then(() => emit('updateList'))
     }
 
-    const handleRenameFile: IRenameFile = (id, name, description) => {
+    const handleReuploadFile: IReuploadResource = (id, name, description) => {
+      emit('reuploadResource', id, name, description)
+    }
+
+    const handleRenameFile: IRenameResource = (id, name, description) => {
       emit('renameResource', id, name, description)
     }
 
@@ -80,6 +83,7 @@ export default defineComponent({
       rtDisb,
       handleEditFile,
       handleDeleteFile,
+      handleReuploadFile,
       handleRenameFile,
       ...props
     }
@@ -88,24 +92,52 @@ export default defineComponent({
     const { t } = useI18n()
     return (
       <NSpace>
+        {this.row.type !== 'UDF' &&
+            <NTooltip trigger={'hover'}>
+              {{
+                default: () => t('resource.file.edit'),
+                trigger: () => (
+                  <NButton
+                    size='tiny'
+                    type='info'
+                    disabled={this.rtDisb(this.row.name, this.row.size)}
+                    tag='div'
+                    onClick={() => {
+                      this.handleEditFile(this.row)
+                    }}
+                    style={{ marginRight: '-5px' }}
+                    circle
+                    class='btn-edit'
+                  >
+                    <NIcon>
+                      <FormOutlined/>
+                    </NIcon>
+                  </NButton>
+                )
+              }}
+            </NTooltip>
+        }
         <NTooltip trigger={'hover'}>
           {{
-            default: () => t('resource.file.edit'),
+            default: () => t('resource.file.reupload'),
             trigger: () => (
               <NButton
                 size='tiny'
                 type='info'
-                disabled={this.rtDisb(this.row.name, this.row.size)}
-                tag='div'
-                onClick={() => {
-                  this.handleEditFile(this.row)
-                }}
+                onClick={() =>
+                  this.handleReuploadFile(
+                    this.row.id,
+                    this.row.name,
+                    this.row.description
+                  )
+                }
+                disabled={!!this.row?.directory}
                 style={{ marginRight: '-5px' }}
                 circle
-                class='btn-edit'
+                class='btn-reupload'
               >
                 <NIcon>
-                  <FormOutlined />
+                  <UploadOutlined/>
                 </NIcon>
               </NButton>
             )
@@ -130,7 +162,7 @@ export default defineComponent({
                 class='btn-rename'
               >
                 <NIcon>
-                  <EditOutlined />
+                  <EditOutlined/>
                 </NIcon>
               </NButton>
             )
@@ -143,7 +175,7 @@ export default defineComponent({
               <NButton
                 size='tiny'
                 type='info'
-                disabled={this.row?.directory ? true : false}
+                disabled={!!this.row?.directory}
                 tag='div'
                 circle
                 style={{ marginRight: '-5px' }}
@@ -151,7 +183,7 @@ export default defineComponent({
                 class='btn-download'
               >
                 <NIcon>
-                  <DownloadOutlined />
+                  <DownloadOutlined/>
                 </NIcon>
               </NButton>
             )
@@ -173,12 +205,12 @@ export default defineComponent({
                     default: () => t('resource.file.delete_confirm'),
                     icon: () => (
                       <NIcon>
-                        <InfoCircleFilled />
+                        <InfoCircleFilled/>
                       </NIcon>
                     ),
                     trigger: () => (
                       <NIcon>
-                        <DeleteOutlined />
+                        <DeleteOutlined/>
                       </NIcon>
                     )
                   }}

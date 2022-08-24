@@ -15,43 +15,35 @@
  * limitations under the License.
  */
 
-import { reactive, ref, unref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { FormRules } from 'naive-ui'
+import type { Router } from 'vue-router'
+import { useRouter } from 'vue-router'
+import { useFileStore } from '@/store/file/file'
+import { onlineCreateResource } from '@/service/modules/resources'
 
-const defaultValue = (name = '', description = '') => ({
-  id: -1,
-  name,
-  type: 'FILE',
-  description
-})
-
-export function useForm(name: string, description: string) {
+export function useCreate(state: any) {
   const { t } = useI18n()
+  const router: Router = useRouter()
+  const fileStore = useFileStore()
 
-  const resetForm = () => {
-    state.renameForm = Object.assign(unref(state.renameForm), defaultValue())
+  const handleCreateFile = () => {
+    const pid = router.currentRoute.value.params.id || -1
+    const currentDir = fileStore.getCurrentDir || '/'
+    state.fileFormRef.validate(async (valid: any) => {
+      if (!valid) {
+        await onlineCreateResource({
+          ...state.fileForm,
+          ...{ pid, currentDir }
+        })
+
+        window.$message.success(t('resource.file.success'))
+        const name = pid ? 'resource-file-subdirectory' : 'file'
+        router.push({ name, params: { id: pid } })
+      }
+    })
   }
 
-  const state = reactive({
-    renameFormRef: ref(),
-    renameForm: defaultValue(name, description),
-    saving: false,
-    rules: {
-      name: {
-        required: true,
-        trigger: ['input', 'blur'],
-        validator() {
-          if (state.renameForm.name === '') {
-            return new Error(t('resource.file.enter_name_tips'))
-          }
-        }
-      }
-    } as FormRules
-  })
-
   return {
-    state,
-    resetForm
+    handleCreateFile
   }
 }

@@ -17,10 +17,10 @@
 
 import { useI18n } from 'vue-i18n'
 import { IEmit } from '../types'
-import { useRouter } from 'vue-router'
 import type { Router } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useFileStore } from '@/store/file/file'
-import { createResource } from '@/service/modules/resources'
+import { createResource, updateResource } from '@/service/modules/resources'
 
 export function useUpload(state: any) {
   const { t } = useI18n()
@@ -41,13 +41,19 @@ export function useUpload(state: any) {
       const currentDir = fileStore.getCurrentDir || '/'
       const formData = new FormData()
       formData.append('file', state.uploadForm.file)
-      formData.append('type', 'FILE')
+      formData.append('type', state.uploadForm.type)
       formData.append('name', state.uploadForm.name)
       formData.append('pid', String(pid))
       formData.append('currentDir', currentDir)
       formData.append('description', state.uploadForm.description)
 
-      await createResource(formData as any)
+      if (state.uploadForm.isReupload) {
+        formData.append('id', state.uploadForm.id)
+        await updateResource(formData as any, state.uploadForm.id)
+      } else {
+        await createResource(formData as any)
+      }
+
       window.$message.success(t('resource.file.success'))
       state.saving = false
       emit('updateList')
